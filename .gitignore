@@ -1,0 +1,43 @@
+# =========================================================================
+# Git Ignore Configuration for THz UM-MIMO Near-Field Channel Estimation
+# =========================================================================
+
+# MATLAB Temporary & Autosave Files
+*.asv
+*.autosave
+*.mat.tmp
+*.fig.tmp
+slprj/
+*.slxc
+
+# Python Caches & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+*.egg-info/
+dist/
+build/
+
+# Jupyter Notebook Checkpoints
+.ipynb_checkpoints
+
+# OS & Editor Metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Large Model Checkpoints & Datasets (>100MB exceed GitHub push limit)
+*.pt
+*.pth
+*.pth.tar
+*.tfevents.*
+events.out.*
+results/data/*.mat
