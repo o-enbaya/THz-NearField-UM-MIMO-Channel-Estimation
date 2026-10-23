@@ -13,6 +13,8 @@ Official implementation, simulation engine, and deep learning framework for the 
 > *Department of Electrical and Electronic Engineering, Faculty of Engineering, University of Tripoli (EE599)*  
 > *Academic Year: 2025 -- 2026*
 
+> **Corrections (October 2026):** Some statements in Chapter 4 of the report, and several numbers previously in this README, did not match the plotted results or the scripts (BER text, distance explanation, runtime units, DR discussion). The report PDF is kept as submitted. All corrections are listed in [Section 8](#8-corrections-to-the-thesis-report).
+
 ---
 
 ## Table of Contents
@@ -35,12 +37,13 @@ Official implementation, simulation engine, and deep learning framework for the 
    - [6.2 Master Performance Comparison Matrix](#62-master-performance-comparison-matrix)
    - [6.3 Key Bachelor's Thesis Findings](#63-key-bachelors-thesis-findings)
 7. [Citation & Academic Reference](#7-citation--academic-reference)
+8. [Corrections to the Thesis Report](#8-corrections-to-the-thesis-report)
 
 ---
 
 ## 1. System & Architecture Overview
 
-The system models an **Ultra-Massive Multiple-Input Multiple-Output (UM-MIMO)** Terahertz (THz) communication link operating within the radiative **near-field Fresnel region** ($d < d_{\mathrm{Rayleigh}} = 1.35\text{ m}$). 
+The system models an **Ultra-Massive Multiple-Input Multiple-Output (UM-MIMO)** Terahertz (THz) communication link operating within the radiative **near-field region**. The link distances used ($0.4$ to $1.6\text{ m}$) are below the Rayleigh distance of even a single $64$-element transmit subarray ($2D^2/\lambda \approx 2\text{ m}$ at $300\text{ GHz}$). 
 
 Because the transceiver operates at $300\text{ GHz}$ with massive antenna apertures, the traditional planar wavefront assumption fails. Electromagnetic waves exhibit distinct **spherical wavefront curvature**, introducing a dual-dependence on both spatial angles $(\theta, \phi)$ and radial propagation distance $r$.
 
@@ -75,8 +78,8 @@ Because the transceiver operates at $300\text{ GHz}$ with massive antenna apertu
 | **Receive Antennas** | $N_r$ | $32$ | $Q_R = 4$ subarrays $\times 8$ Antennas ($8\times 1$ ULA per subarray) |
 | **RF Chains / Streams** | $N_{\mathrm{RF}}, N_s$ | $4, (1, 2)$ | Array of Subarrays (AoSA) sub-connected hybrid beamforming |
 | **Antenna Spacing** | $d_{\mathrm{AE}}$ | $0.5\text{ mm}$ | Half-wavelength ($\\lambda / 2$) at $300\text{ GHz}$ |
-| **Subarray Separation** | $d_{\mathrm{SA}}$ | $10\text{ mm}$ | Disjoint physical separation between AoSA modules ($20\lambda$) |
-| **Operating Distance** | $d$ | $1.0\text{ m}$ | Radiative near-field ($d < d_{\mathrm{Rayleigh}} = 1.35\text{ m}$) |
+| **Subarray Separation** | $d_{\mathrm{SA}}$ | $10\text{ mm}$ | Physical separation between AoSA modules ($10\lambda_c$) |
+| **Operating Distance** | $d$ | $1.0\text{ m}$ | Radiative near field (below the $\approx 2\text{ m}$ Rayleigh distance of one $64$-element subarray) |
 | **Multipath Channels** | $L$ | $4$ | 1 dominant Line-of-Sight (LoS) + 3 Non-LoS (NLoS) clusters |
 
 ---
@@ -86,7 +89,7 @@ Because the transceiver operates at $300\text{ GHz}$ with massive antenna apertu
 ### A. Hardware Specifications
 * **GPU**: NVIDIA GPU with CUDA support (e.g., GTX 1660, RTX 2060/3060/4070/4090, V100, A100, or Google Colab GPU).
   * **Training VRAM**: $\ge 6\text{ GB}$ recommended for training batch sizes of $50\text{--}100$.
-  * **Inference/Evaluation**: GPU or standard multi-core CPU (online inference takes only $\approx 0.36\text{ ms}$ on GPU).
+  * **Inference/Evaluation**: GPU or standard multi-core CPU. In our runtime test, online inference took $\approx 0.36\text{ s}$ per channel estimate (not ms; see [Section 8](#8-corrections-to-the-thesis-report)).
 * **System RAM**: $\ge 16\text{ GB}$ recommended (for processing full $5000$-sample channel tensors in memory).
 * **Storage**: $\ge 5\text{ GB}$ free disk space (for dataset tensors, checkpoints, and simulation outputs).
 * **Operating System**: Windows 10/11 (64-bit) or Linux (Ubuntu 20.04/22.04 LTS).
@@ -162,41 +165,44 @@ THz-NearField-UM-MIMO-Channel-Estimation/
 ├── channel_simulator/                   # TeraMIMO Physics & Molecular Absorption Engine
 │   ├── Molecular_Absorption/            # Hitran-based spectroscopic atmospheric absorption
 │   │   ├── Data/                        # Molecular spectral line data (H2O, O2, N2, CO2, CH4)
-│   │   ├── compute_Abs_Coef.m           # Medium absorption coefficient calculator
+│   │   ├── get_Abs_Coef.m               # Molecular absorption coefficient (HITRAN based)
 │   │   └── Gas_Abs_Coef.m               # Atmospheric transmission path loss
-│   └── TeraMIMO_Channel/                # Near-Field Spherical Wavefront Engine
-│       ├── Channel/                     # Time-invariant / time-variant channel matrices
-│       ├── Ch_Utilities/                # Array response, spherical delays, angles, path loss
-│       └── Visualization/               # Spatial beam pattern and array geometry plots
+│   ├── TeraMIMO_Channel/                # Near-field spherical-wave channel engine (TeraMIMO, Tarboush et al.)
+│   │   ├── ChannelGeneration/           # Channel generation, LoS distances/angles, path loss
+│   │   ├── InitializeParameters/        # AoSA, geometry, frequency and HITRAN parameters
+│   │   └── Ch_Utilities/                # Direction vector and angle utilities
+│   └── Utilities/                       # Dictionaries, codebooks, SNR setup, achievable rate
 │
-├── Algorithms/                          # Conventional Compressive Sensing Solvers
-│   ├── OMP_SMC.m                        # Subarray OMP for hybrid AoSA architectures
-│   ├── SOMP.m                           # Simultaneous OMP exploiting joint subcarrier sparsity
-│   ├── OMP_SMC_DR.m                     # Subarray OMP with Dictionary Reduction (DR)
-│   ├── get_proposed_DR.m                # Localized spatial dictionary reduction operator
-│   ├── get_proposed_HSPM_estimation.m   # Hybrid Spherical-Polar Matching pursuit
-│   └── Array_Response.m                 # Near-field spherical steering dictionary generator
+├── Algorithms/                          # Conventional CS baselines (code by S. Tarboush, ICASSP 2023)
+│   ├── OMP_SMC.m                        # OMP solved separately for each subcarrier (SMC = separate multi-carriers)
+│   ├── SOMP.m                           # Simultaneous OMP, one joint problem for all subcarriers
+│   ├── OMP_SMC_DR.m                     # Per-subcarrier OMP with dictionary reduction (DR)
+│   ├── get_proposed_DR.m                # Builds the reduced (localized) sub-dictionaries
+│   └── get_proposed_HSPM_estimation.m   # Estimation loop over subarray pairs (hybrid spherical/planar-wave model, HSPM)
 │
 ├── simulations/                         # Automated Simulation Testbenches
 │   ├── NMSEvsSNR.m                      # Evaluates Figure 4.2 (NMSE vs Transmit SNR)
 │   ├── EARvsNumberofMeasurements.m      # Evaluates Figure 4.3 (Effective Achievable Rate)
 │   ├── NMSEvsRho.m                      # Evaluates Figure 4.4 (NMSE vs Compression Ratio)
-│   ├── BERvsSNR_Cal.m                   # Evaluates Figure 4.5 (Calibrated BER vs SNR)
-│   ├── BERvsSNR_QPSK.m                  # Monte Carlo QPSK transmission simulation
-│   ├── run_nmse_vs_distance_nearfield.m # Evaluates Figure 4.6 (NMSE vs Distance: 0.4m - 1.6m)
+│   ├── BERvsSNR_Cal.m                   # Earlier BER version (Figure 4.5 was made by thesis_figure_scripts/matlab/Untitled4.m and NS2.m)
+│   ├── BERvsSNR_QPSK.m                  # Monte Carlo QPSK transmission simulation (not used in the thesis figures)
+│   ├── NMSE_EAR_Vs_Distance.m           # Evaluates Figure 4.6 (NMSE and AR vs distance, baselines, fixed 10 dB SNR)
+│   ├── run_nmse_vs_distance_nearfield.m # Generates per-distance channel datasets (DCS distance study, not in the thesis)
 │   ├── Complexity.m                     # Evaluates Table 4.3 (Analytical FLOPs)
-│   ├── Runtime.m                        # Evaluates Figure 4.7 (Execution Time / Profiling)
+│   ├── Runtime.m                        # Plots Figure 4.7(b) from the measured runtimes (values entered by hand)
 │   └── genreate_thz_channel_universal.m # Synthetic channel realization generator
 │
-├── plotting/                            # Publication Figure Plotting Scripts (Bachelor's Thesis Overlay)
-│   ├── plot_NMSE_Results.m              # Generates Figure 4.2 (NMSE vs SNR)
-│   ├── plot_EAR_Results.m               # Generates Figure 4.3 (EAR vs Measurements)
-│   ├── plot_NMSE_vs_Rho.m               # Generates Figure 4.4 (NMSE vs Spatial Compression Ratio)
-│   └── plot_Distance_Sweep_Results.m    # Generates Figure 4.6 (NMSE vs Distance)
+├── plotting/                            # Earlier plot versions (final thesis plots: thesis_figure_scripts/matlab/plotting)
+│   ├── plot_NMSE_Results.m              # Figure 4.2 (earlier style)
+│   ├── plot_EAR_Results.m               # Figure 4.3 (earlier style)
+│   ├── plot_NMSE_vs_Rho.m               # Figure 4.4
+│   └── plot_Distance_Sweep_Results.m    # Figure 4.6
+│
+├── thesis_figure_scripts/               # Unchanged originals of the scripts that produced every thesis figure, with an index
 │
 ├── results/                             # Centralized Simulation Workspaces & Results
 │   ├── data/                            # Raw simulation MAT-files (.mat)
-│   ├── csv/                             # Calibrated benchmark data (.csv)
+│   ├── csv/                             # Result data (.csv), including some earlier runs (see Section 8)
 │   └── figures/                         # Exported publication plots (.png, .pdf, .fig)
 │
 └── python_dcs/                          # PyTorch Deep Compressed Sensing (DCS) Pipeline
@@ -217,13 +223,14 @@ THz-NearField-UM-MIMO-Channel-Estimation/
     │   ├── eval_fig4_3_ear_vs_meas.py   # Evaluates Figure 4.3 (EAR vs Pilot Overhead)
     │   ├── plot_dcsEAR.py               # Plots Figure 4.3 EAR curves
     │   ├── eval_fig4_4_nmse_vs_rho.py   # Evaluates Figure 4.4 (NMSE vs Compression Ratio)
-    │   ├── eval_fig4_5_ber_vs_snr.py    # Evaluates Figure 4.5 (Calibrated BER vs SNR)
-    │   ├── eval_fig4_6_distance_sweep.py# Evaluates Figure 4.6 (NMSE vs Distance: 0.4m - 1.6m)
-    │   └── eval_fig4_7_runtime.py       # Evaluates Figure 4.7 (Execution Time & Speedup)
+    │   ├── eval_fig4_5_ber_vs_snr.py    # DCS BER vs SNR (latest exploratory version: QPSK, Ns = 2; see Section 8)
+    │   ├── eval_fig4_6_distance_sweep.py# Exploratory DCS distance sweep (DCS is not in thesis Figure 4.6)
+    │   ├── eval_fig4_7_runtime.py       # Measures the DCS runtime of Figure 4.7(b)
+    │   └── eval_runtime.py              # Prints Table 4.3 FLOPs and the measured runtimes
     │
     ├── checkpoints/                     # Model weights directory (gitignored for large files)
     │   └── README.md                    # Instructions for pre-trained .pth.tar checkpoints
-    └── data/                            # Calibrated evaluation CSV benchmarks
+    └── data/                            # Evaluation result CSV files
 ```
 
 ---
@@ -234,7 +241,7 @@ The Deep Compressed Sensing framework replaces discrete angular/polar dictionari
 
 The pipeline operates in two distinct phases:
 1. **Offline Meta-Learning (Algorithm 1)**: Meta-trains the generator $G_\theta$ across diverse channel realizations using Model-Agnostic Meta-Learning (MAML) and an auxiliary Restricted Isometry Property (RIP) loss.
-2. **Online Real-Time Inference (Algorithm 2)**: Freezes network weights $\theta^{\ast}$ and reconstructs the channel from compressed pilot observations by optimizing only a low-dimensional latent vector $z$ via fast gradient descent ($T = 10\text{--}20$ steps, taking $\approx 0.36\text{ ms}$).
+2. **Online Real-Time Inference (Algorithm 2)**: Freezes network weights $\theta^{\ast}$ and reconstructs the channel from compressed pilot observations by optimizing only a low-dimensional latent vector $z$ via gradient descent ($T = 10\text{--}20$ steps; $\approx 0.36\text{ s}$ per estimate in our runtime test).
 
 ```
 [Phase 0: Generation]             [Phase 1: Offline Training]            [Phase 2: Online Inference]
@@ -336,7 +343,7 @@ python -m python_dcs.training.dcs_finetune
 
 ### Phase 2: Online Real-Time Inference (Algorithm 2)
 
-During online operation at the base station or user terminal, the receiver estimates the unknown near-field channel from real-time compressed pilot observations. Crucially, the generator network weights $\theta^{\ast}$ are **frozen** (zero neural network backpropagation), eliminating the computational cost of training deep networks in real time.
+During online operation at the base station or user terminal, the receiver estimates the unknown near-field channel from real-time compressed pilot observations. Crucially, the generator network weights $\theta^{\ast}$ are **frozen**: they are not updated. Note that computing the gradient with respect to $z$ still requires a backward pass through the generator at every step, so each step costs roughly one forward and one backward pass.
 
 #### Step-by-Step Online Execution Flow
 
@@ -351,16 +358,18 @@ $$
 $$
 
 3. **Frozen Network Weights**:
-   The pre-trained generator weights $\theta^{\ast}$ are **strictly frozen** (zero backpropagation through the neural network during deployment).
+   The pre-trained generator weights $\theta^{\ast}$ are **frozen** (not updated during deployment). Gradients are still back-propagated through the generator to reach $z$.
 
 4. **Low-Dimensional Latent Optimization**:
    The receiver searches for the optimal latent vector $z^{\ast} \in \mathbb{R}^{d_z}$ ($d_z = 100$) that minimizes the pilot measurement fitting error:
 
 $$
-z^{\ast} = \arg\min_{z} \; \left( \|\tilde{\mathbf{y}} - \mathbf{\Phi} G_{\theta^{\ast}}(z)\|_2^2 + \lambda_z \|z\|_2^2 \right)
+z^{\ast} = \arg\min_{\|z\|_2 = 1} \; \|\tilde{\mathbf{y}} - \mathbf{\Phi} G_{\theta^{\ast}}(z)\|_2^2
 $$
 
-5. **Fast Gradient Updates ($T = 10$ steps)**:
+   (The implementation has no explicit regularization term on $z$; instead, $z$ is normalized to unit length after every step.)
+
+5. **Gradient Updates ($T = 10\text{--}20$ steps, depending on the experiment)**:
    The latent code is iteratively updated via Adam gradient descent and projected onto the unit hypersphere:
 
 $$
@@ -375,7 +384,7 @@ $$
 $$
 
 7. **Execution Time**:
-   The latent optimization converges in only $10\text{--}20$ steps, taking **$0.36\text{ ms}$** on GPU ($20.8\times$ faster than SOMP's $7.50\text{ ms}$), fitting comfortably within the $1\text{--}5\text{ ms}$ THz near-field channel coherence window.
+   With $T = 20$ steps, the measured runtime was **$\approx 0.36\text{ s}$ per channel estimate** (Figure 4.7(b)), about $2\times$ faster than SOMP ($0.77\text{ s}$) in our simulation code. These are unoptimized research scripts, so the absolute times are far from real-time and should only be compared with each other. See [Section 8](#8-corrections-to-the-thesis-report) for the timing procedure.
 
 ---
 
@@ -390,14 +399,14 @@ $$
 * **$\tilde{\mathbf{n}} \sim \mathcal{CN}(\mathbf{0}, \sigma_n^2 \mathbf{I}_{M_r N_p})$**: The **Additive White Gaussian Noise (AWGN)** vector introduced by thermal noise and analog front-end components at the receiver RF chains, with noise variance $\sigma_n^2$ determined by the operating SNR.
 * **$z \in \mathbb{R}^{d_z}$ ($d_z = 100$)**: The **low-dimensional latent code vector**. It serves as the compact semantic coordinates identifying the near-field channel on the generator's learned manifold.
 * **$z^{(0)} \sim \mathcal{N}(\mathbf{0}, \mathbf{I}_{d_z})$**: The **initial latent vector**, initialized randomly at iteration $t = 0$ from a standard multivariate Gaussian distribution.
-* **$\theta^{\ast}$**: The pre-trained, meta-learned generator network parameters, which remain **strictly frozen** during online inference. **No gradient backpropagation through the neural network layers is performed**, keeping the process ultra-fast.
+* **$\theta^{\ast}$**: The pre-trained, meta-learned generator network parameters, which remain **frozen** (not updated) during online inference. Gradients are still back-propagated through the network layers to compute $\nabla_z$.
 * **$G_{\theta^{\ast}}(z)$**: The **synthesized candidate channel** generated by passing the latent vector $z$ through the frozen neural network $G_{\theta^{\ast}}$.
 * **$\mathbf{\Phi} G_{\theta^{\ast}}(z)$**: The **simulated pilot observation** that the receiver *would* observe if the true physical channel were exactly $G_{\theta^{\ast}}(z)$.
 * **$\|\tilde{\mathbf{y}} - \mathbf{\Phi} G_{\theta^{\ast}}(z)\|_2^2$**: The **measurement residual (fitting error)** using the squared Euclidean $\ell_2$-norm (where $\|\mathbf{v}\|_2^2 = \sum_j |v_j|^2$). It measures the discrepancy between the synthesized pilot response and the actual physical pilots $\tilde{\mathbf{y}}$ observed over the air.
-* **$\lambda_z \|z\|_2^2$**: A **Tikhonov regularization term** (with hyperparameter $\lambda_z \approx 10^{-3}$). It penalizes latent vectors that drift too far from the origin, ensuring $z$ remains within the high-probability density region of the Gaussian prior learned during offline training.
-* **$\arg\min_z$**: The mathematical minimization operator seeking the specific latent code $z^{\ast}$ that minimizes the sum of the measurement residual and the prior regularization.
+* **$\|z\|_2 = 1$**: The latent vector is kept on the unit sphere by normalizing it after each update (there is no separate regularization term in the code).
+* **$\arg\min_z$**: The minimization operator seeking the latent code $z^{\ast}$ that minimizes the measurement residual.
 * **$\alpha_{\mathrm{online}} = 0.1$**: The **online step size (learning rate)** used to update the latent vector.
-* **$\nabla_z \mathcal{L}(z^{(t)})$**: The **gradient vector** of the loss taken *exclusively* with respect to the $100$ variables in $z^{(t)}$. Crucially, computing $\nabla_z$ requires only evaluating the network's input gradient, taking a fraction of a millisecond.
+* **$\nabla_z \mathcal{L}(z^{(t)})$**: The **gradient vector** of the loss taken *exclusively* with respect to the $100$ variables in $z^{(t)}$. Computing $\nabla_z$ requires a backward pass through the generator (the weights are not updated).
 * **Denominator $\|\cdot\|_2$**: Normalizes the updated vector to lie on the **unit hypersphere** $\mathbb{S}^{d_z - 1}$. This projection step prevents gradient magnitude explosion and restricts the search trajectory to the high-density sphere of the prior.
 * **$\hat{\mathbf{H}} \in \mathbb{C}^{N_r \times N_t \times K}$**: The **final estimated channel tensor** across all $N_r = 32$ receive antennas, $N_t = 256$ transmit antennas, and $K = 8$ OFDM subcarriers ($65,536$ complex channel gains).
 
@@ -427,24 +436,24 @@ python -m python_dcs.evaluation.eval_fig4_4_nmse_vs_rho
 ```
 
 #### 4. Figure 4.5: Bit Error Rate (BER) vs. SNR & Spatial Multiplexing Limits
-Simulates end-to-end communication reliability for single-stream ($N_s = 1$) and multi-stream ($N_s = 2$) configurations:
+DCS BER evaluation. **Note:** this script is a later exploratory variant (QPSK, $N_s = 2$, stage-3 fine-tuned checkpoint, 10 restarts, 100 to 600 gradient steps). The Deep CS curves in thesis Figure 4.5 were produced by `thesis_figure_scripts/python/NMSEandBER.py` (16-QAM, e300 checkpoint, 20 steps, 1 restart). See [Section 8](#8-corrections-to-the-thesis-report).
 ```bash
 python -m python_dcs.evaluation.eval_fig4_5_ber_vs_snr
 ```
 
-#### 5. Figure 4.6: Near-Field Distance Sweep ($0.4\text{ m}$ to $1.6\text{ m}$)
-Evaluates estimation accuracy across the near-field Fresnel boundary ($d_{\mathrm{Rayleigh}} = 1.35\text{ m}$):
+#### 5. Exploratory DCS Distance Sweep ($0.4\text{ m}$ to $1.6\text{ m}$)
+Evaluates DCS across distances. This is **not** part of thesis Figure 4.6, which shows only the conventional baselines (`simulations/NMSE_EAR_Vs_Distance.m`):
 ```bash
 python -m python_dcs.evaluation.eval_fig4_6_distance_sweep
 ```
 
-#### 6. Figure 4.7: Online Latency & Runtime Profiling
-Profiles execution time per channel realization and computes speedup factors relative to SOMP:
+#### 6. Figure 4.7: Online Runtime
+Measures the DCS runtime per channel estimate (batch of 100 channels, 20 gradient steps, wall-clock time divided by 100):
 ```bash
 python -m python_dcs.evaluation.eval_fig4_7_runtime
 ```
 
-> **Note**: If pre-trained `.pth.tar` weights are not present locally, the evaluation scripts cleanly report calibration benchmarks from `results/csv/` and `python_dcs/data/`.
+> **Note**: Result CSV files are stored in `results/csv/` and `python_dcs/data/`. Some of them come from earlier runs; Section 8 says which results the thesis figures use.
 
 ---
 
@@ -486,11 +495,12 @@ $$
 ### Step 3: Conventional Sparse Recovery Algorithms
 
 Located in `Algorithms/`:
-* **`OMP_SMC.m`**: Subarray Orthogonal Matching Pursuit tailored for Array-of-Subarrays (AoSA) architectures.
-* **`SOMP.m`**: Simultaneous OMP exploiting common spatial angular sparsity across all $K=8$ wideband subcarriers.
-* **`OMP_SMC_DR.m`**: Subarray OMP with Dictionary Reduction (DR) to cut dictionary column dimensions.
-* **`get_proposed_DR.m`**: Extracts localized sub-dictionaries around detected peak correlation regions.
-* **`get_proposed_HSPM_estimation.m`**: Hybrid Spherical-Polar Matching pursuit for joint angle-distance recovery.
+These baseline implementations are by Simon Tarboush (Tarboush, Ali and Al-Naffouri, ICASSP 2023); we adapted them to our shared simulation setup.
+* **`OMP_SMC.m`**: Orthogonal Matching Pursuit solved separately for each subcarrier (SMC = separate multi-carriers).
+* **`SOMP.m`**: Simultaneous OMP exploiting common spatial sparsity across all $K=8$ wideband subcarriers.
+* **`OMP_SMC_DR.m`**: Per-subcarrier OMP with Dictionary Reduction (DR).
+* **`get_proposed_DR.m`**: Builds localized sub-dictionaries from the support estimated on a neighbouring subarray.
+* **`get_proposed_HSPM_estimation.m`**: Runs the estimation over every Tx/Rx subarray pair under the hybrid spherical- and planar-wave model (HSPM): planar wavefront within a subarray, spherical across subarrays.
 
 ---
 
@@ -508,14 +518,15 @@ run('simulations/EARvsNumberofMeasurements.m');
 % 3. Figure 4.4: NMSE vs Spatial Compression Ratio rho (Np / Nt)
 run('simulations/NMSEvsRho.m');
 
-% 4. Figure 4.5: Calibrated BER vs SNR simulation (Single & Multi-Stream)
+% 4. Earlier BER simulation (thesis Figure 4.5 was made by
+%    thesis_figure_scripts/matlab/Untitled4.m and NS2.m)
 run('simulations/BERvsSNR_Cal.m');
 
-% 5. Figure 4.5 (Alternative): Full Monte Carlo transmission simulation
+% 5. QPSK variant of the BER simulation (not used in the thesis figures)
 run('simulations/BERvsSNR_QPSK.m');
 
-% 6. Figure 4.6: Near-field Distance Sweep (d = 0.4 m to 1.6 m)
-run('simulations/run_nmse_vs_distance_nearfield.m');
+% 6. Figure 4.6: NMSE and achievable rate vs distance (d = 0.4 m to 1.6 m, fixed 10 dB SNR)
+run('simulations/NMSE_EAR_Vs_Distance.m');
 
 % 7. Table 4.3: Analytical Computational Complexity (FLOPs)
 run('simulations/Complexity.m');
@@ -610,44 +621,43 @@ $$
 \mathrm{BER} = \frac{\text{Number of Bit Errors}}{\text{Total Transmitted Bits}}
 $$
 
-* **Physical Insight**: Tests the interaction between channel estimation accuracy and transceiver hardware constraints. In sub-connected Array-of-Subarrays (AoSA) architectures, each RF chain connects to a localized subset of antennas, imposing a block-diagonal constraint on analog beamforming. While single-stream transmission ($N_s = 1$) achieves full array beamforming gain, multi-stream transmission ($N_s = 2$) faces unavoidable inter-stream interference due to sparse THz channel rank and restricted analog null-steering. High-quality CSI from Deep CS allows digital baseband equalizers to suppress cross-stream leakage to the maximum extent physically possible.
+* **Physical Insight**: Tests the interaction between channel estimation accuracy and transceiver hardware constraints. In sub-connected Array-of-Subarrays (AoSA) architectures, each RF chain connects to a localized subset of antennas, imposing a block-diagonal constraint on analog beamforming. While single-stream transmission ($N_s = 1$) achieves full array beamforming gain, multi-stream transmission ($N_s = 2$) faces inter-stream interference due to the low rank of the THz channel (closely spaced subarrays see highly correlated channels) and the restricted analog beamforming. All methods degrade in this case, including perfect CSI.
 
 ---
 
-#### 5. Near-Field Distance Robustness ($d$)
-Evaluates NMSE across radial distance $d \in [0.4\text{ m}, 1.6\text{ m}]$, assessing stability when crossing the near-field Fresnel boundary ($d_{\mathrm{Rayleigh}} = 1.35\text{ m}$).
+#### 5. Near-Field Distance Dependence ($d$)
+Evaluates NMSE and achievable rate of the conventional baselines across $d \in [0.4\text{ m}, 1.6\text{ m}]$. The received SNR is held fixed at $10\text{ dB}$: the transmit power is raised at each distance to cancel the path loss. Changes with distance therefore come from the channel geometry, not from SNR.
 
 ---
 
-#### 6. Computational Complexity & Online Latency
-* **FLOPs**: Total analytical arithmetic operations required per channel estimate.
-* **Online Latency**: Wall-clock execution time per estimate versus the THz coherence budget ($1\text{--}5\text{ ms}$).
+#### 6. Computational Complexity & Runtime
+* **FLOPs**: Analytical operation counts per channel estimate (Table 4.3). The DCS count covers only the measurement-operator products and leaves out the generator's forward and backward passes, so it underestimates the DCS cost.
+* **Runtime**: Measured wall-clock time per estimate in our simulation code (MATLAB for the baselines, PyTorch for DCS). Useful for relative comparison only.
 
 ---
 
-### 6.2 Master Performance Comparison Matrix
+### 6.2 Summary of Results
 
-| Evaluation Metric / Feature | OMP | SOMP | OMP-DR | SOMP-DR | Deep CS (DCS-MAML) | Performance Advantage of Deep CS |
-| :--- | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Dictionary Model** | Discrete Grid | Discrete Grid | Shrunk Grid | Shrunk Grid | **Continuous Prior $G_\theta$** | **Eliminates spatial grid mismatch** |
-| **NMSE @ $\text{SNR} = 0\text{ dB}$** | $-2.1\text{ dB}$ | $-4.8\text{ dB}$ | $-2.1\text{ dB}$ | $-4.8\text{ dB}$ | **$-12.4\text{ dB}$** | **$+7.6\text{ dB}$ to $+10.3\text{ dB}$ accuracy gain** |
-| **NMSE @ $\text{SNR} = 20\text{ dB}$** | $-7.2\text{ dB}$ (floor) | $-12.6\text{ dB}$ | $-7.2\text{ dB}$ (floor) | $-12.6\text{ dB}$ | **$-16.8\text{ dB}$ (clean)** | No error floor from off-grid leakage |
-| **Pilots for Peak Rate ($T_c=512$)** | $\sim 80$ pilots | $\sim 64$ pilots | $\sim 80$ pilots | $\sim 64$ pilots | **$16$ pilots** | **$4\times\text{--}5\times$ lower pilot overhead** |
-| **Peak EAR ($T_c=512$)** | $14.2\text{ bps/Hz}$ | $15.8\text{ bps/Hz}$ | $14.2\text{ bps/Hz}$ | $15.8\text{ bps/Hz}$ | **$18.5\text{ bps/Hz}$** | **$+2.7\text{ bps/Hz}$ net throughput gain** |
-| **Min. Compression Ratio ($\rho$)** | $\rho \ge 0.50$ | $\rho \ge 0.35$ | $\rho \ge 0.50$ | $\rho \ge 0.35$ | **$\rho = 0.15$** | Preserves $-15\text{ dB}$ NMSE at extreme sub-Nyquist |
-| **Single-Stream ($N_s=1$) BER** | Fails $10^{-3}$ at $20\text{ dB}$ | Reaches $10^{-3}$ @ $18\text{ dB}$ | Fails $10^{-3}$ at $20\text{ dB}$ | Reaches $10^{-3}$ @ $18\text{ dB}$ | **$10^{-4}$ @ $\approx 7\text{ dB}$** | **Steepest beamforming waterfall** |
-| **Multi-Stream ($N_s=2$) BER** | Floors $> 10^{-2}$ | Floors $\approx 10^{-2}$ | Floors $> 10^{-2}$ | Floors $\approx 10^{-2}$ | **Reaches $10^{-3}$ @ $15\text{ dB}$** | **Best cross-stream leakage suppression** |
-| **Analytical FLOPs** | $3.35 \times 10^8$ | $3.36 \times 10^8$ | $3.28 \times 10^8$ | $3.29 \times 10^8$ | **$6.55 \times 10^7$** | **$5.1\times$ fewer analytical operations** |
-| **Online Inference Latency** | $2.10\text{ ms}$ | $7.50\text{ ms}$ | $1.15\text{ ms}$ | $4.20\text{ ms}$ | **$0.36\text{ ms}$** | **$20.8\times$ faster than SOMP** |
-| **Coherence Window Feasibility** | Marginal | **Fails ($>5\text{ ms}$)** | Acceptable | Marginal | **Optimal ($<0.5\text{ ms}$)** | Fits easily within $1\text{--}5\text{ ms}$ THz coherence |
+All values are read from the figures and tables of the report (approximate where read from a plot). This table replaces an earlier version that contained numbers not supported by the results.
+
+| Metric (source) | OMP | SOMP | OMP-DR | SOMP-DR | Deep CS |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| NMSE at 0 dB SNR (Fig. 4.2) | $\approx -3.3$ dB | $\approx -4.8$ dB | $\approx -4.3$ dB | $\approx -5.9$ dB | $\approx -14.3$ dB |
+| NMSE at 20 dB SNR (Fig. 4.2) | $\approx -6.2$ dB | $\approx -6.2$ dB | $\approx -7.8$ dB | $\approx -7.8$ dB | $\approx -14.5$ dB |
+| Peak EAR, $T_{\mathrm{coh}} = 512$ (Fig. 4.3b) | $\approx 12.2$ b/s/Hz at 80 meas. | $\approx 12.6$ at 80 | $\approx 14.4$ at 80 | $\approx 14.9$ at 80 | $\approx 18.4$ at the lowest tested ($\approx 16$) |
+| NMSE at $\rho = 1$ (Fig. 4.4) | $\approx -5.7$ dB | $\approx -6.1$ dB | $\approx -7.4$ dB | $\approx -8.0$ dB | $\approx -15$ dB (flat from $\rho \approx 0.1$) |
+| BER, $N_s = 1$, 20 dB (Fig. 4.5a) | $1.4\times10^{-2}$ | $1.2\times10^{-2}$ | $1.5\times10^{-2}$ | $1.3\times10^{-2}$ | no errors observed from 10 dB |
+| BER, $N_s = 2$, 30 dB (Fig. 4.5b) | $0.11$ | $0.10$ | $0.08$ | $0.07$ | $1.9\times10^{-3}$ (perfect CSI: $1.0\times10^{-3}$) |
+| Analytical FLOPs (Table 4.3) | $3.36\times10^8$ | $3.36\times10^8$ | $3.26\times10^8$ | $3.14\times10^8$ | $6.55\times10^7$ (excludes generator passes) |
+| Measured runtime per estimate (Fig. 4.7b) | $6.45$ s | $0.77$ s | $7.53$ s | $0.75$ s | $0.36$ s |
 
 ---
 
 ### 6.3 Key Bachelor's Thesis Findings
-1. **Eliminating Spatial Grid Mismatch**: Discrete polar dictionaries suffer from spatial grid discretization error, causing conventional OMP and SOMP to floor out at high SNR. Deep CS operates over a continuous manifold, achieving a clean **$-16.8\text{ dB}$ NMSE**.
-2. **$4\times$ Reduction in Pilot Overhead**: In fast-fading THz channels ($T_{\mathrm{coh}} = 512$), Deep CS achieves peak spectral efficiency (**$18.46\text{ bps/Hz}$**) with only **$16$ pilots** ($3.1\%$ overhead), leaving **$96.9\%$ of the frame** for payload data.
-3. **Spatial Multiplexing Limits & AoSA Hardware Constraints**: In single-stream transmission ($N_s = 1$), Deep CS achieves full beamforming gain, reaching a target $\mathrm{BER} = 10^{-4}$ at an SNR of approximately $7\text{ dB}$ (whereas standard OMP fails to break $10^{-3}$ even at $20\text{ dB}$). In multi-stream transmission ($N_s = 2$), overall performance degrades across all algorithms due to the inherent low rank of sparse THz channels combined with the block-diagonal constraint of sub-connected AoSA arrays (which restricts analog null-steering). However, Deep CS significantly outperforms conventional methods by reaching $\mathrm{BER} = 10^{-3}$ near $15\text{ dB}$ (while conventional methods struggle below $10^{-2}$), enabling digital baseband equalizers to suppress cross-stream leakage as effectively as physically possible under hardware constraints.
-4. **Real-Time Feasibility ($0.36\text{ ms}$ Latency)**: Latent space optimization converges in $10\text{--}20$ steps, executing in **$0.36\text{ ms}$** on GPU ($20.8\times$ speedup over SOMP's $7.50\text{ ms}$), well within the channel coherence limit.
+1. **Grid mismatch vs. learned prior**: The conventional methods reach an error floor around $-6$ dB (OMP, SOMP) and $-8$ dB (DR variants) because the true near-field paths fall between dictionary grid points. Deep CS reaches about $-14.5$ dB. It also saturates (flat from about $-5$ dB SNR), but at a much lower level, set by the learned prior rather than by a grid.
+2. **Lower pilot overhead**: With a coherence block of $512$ symbols, Deep CS reaches its peak effective rate (about $18.4$ b/s/Hz) with about $16$ measurements, while the best baseline (SOMP-DR) peaks at about $14.9$ b/s/Hz with $80$ measurements.
+3. **Spatial multiplexing limit**: With one stream, Deep CS performs close to perfect CSI. With two streams, every method degrades, including perfect CSI: Deep CS reaches about $1.9\times10^{-3}$ only at $30$ dB, while the baselines stay near $10^{-1}$. In further tests with up to four streams, the BER approached $0.5$ for all methods. The cause is the low rank of the channel (closely spaced subarrays see highly correlated channels) combined with the block-diagonal AoSA constraint, not the estimation algorithms.
+4. **Runtime**: In our simulation code, Deep CS took about $0.36$ s per estimate, about $2\times$ faster than SOMP and SOMP-DR and about $18\times$ faster than OMP. OMP is slow mainly because it solves each of the $K = 8$ subcarriers separately.
 
 ---
 
@@ -669,3 +679,39 @@ If you use this simulation codebase, deep learning models, or parts of this fram
 
 ### Acknowledgements
 We express our deepest gratitude to our supervisor, **Eng. Aya H.A. Alsmoee**, for her guidance, continuous encouragement, and technical insights throughout this project. We also thank the **Department of Electrical and Electronic Engineering** at the **University of Tripoli**.
+
+---
+
+## 8. Corrections to the Thesis Report
+
+Some of the points below were raised by a reader of the report; the rest were found while re-checking the report against the scripts and result files (October 2026). The report PDF in `documentation/` is kept as submitted. Page numbers refer to the printed page numbers of the report.
+
+**1. BER text (p. 59) vs. Figure 4.5(b).**
+The report says that with two streams Deep CS reaches a BER of about $10^{-3}$ near $15$ dB and that the baselines struggle to go below $10^{-2}$. The plotted data shows Deep CS at about $1.4\times10^{-1}$ at $15$ dB and $1.9\times10^{-3}$ at $30$ dB, while the baselines stay between $0.07$ and $0.11$ at $30$ dB. The text was written from an earlier run (`results/csv/DCS_BER_vs_SNRNS2.csv`, which gives $4.7\times10^{-3}$ at $15$ dB) and was not updated when the figure was regenerated. In Figure 4.5(a), points drawn at $10^{-6}$ are runs with zero bit errors, plotted at a floor value.
+
+**2. Distance explanation (p. 61) vs. Figure 4.6(a).**
+The report says NMSE worsens with distance because the received SNR drops. In `NMSE_EAR_Vs_Distance.m` the received SNR is held fixed at $10$ dB (the transmit power compensates the path loss), and Figure 4.6(a) shows NMSE *improving* with distance. The likely reason is that the baselines use the hybrid spherical/planar-wave model, which treats the wavefront as planar within each subarray. That approximation is poor at $0.4$ m and becomes more accurate toward the $\approx 2$ m Rayleigh distance of a $64$-element subarray. The achievable rate in Figure 4.6(b) still falls with distance, even with perfect CSI; since SNR is fixed, this is not path loss. A likely cause is that the channel loses spatial rank as the receiver moves away; this has not yet been verified.
+
+**3. DR discussion (p. 63) vs. Figure 4.6.**
+The report says OMP/SOMP overlap with their DR versions and that DR gives exactly the same accuracy. In Figure 4.6(b) the overlapping pairs are OMP with SOMP, and OMP-DR with SOMP-DR. In Figure 4.6(a) the DR versions are $1$ to $2.5$ dB better. DR therefore does change the accuracy in this setup.
+
+**4. Runtime units and procedure (Figure 4.7(b)).**
+This README previously stated $0.36$ ms on GPU. The measured value is **$0.364$ s per estimate**: the mean of the per-sample runtimes at $9$ SNR points ($0.354$ to $0.412$ s; the first point includes warm-up). `eval_fig4_7_runtime.py` processes a batch of $100$ test channels with $20$ Adam steps and $1$ restart, measures wall-clock time with `time.perf_counter()` (including the measurement-batch construction), and divides by $100$. The baseline runtimes were measured in MATLAB by `thesis_figure_scripts/matlab/Untitled3.m`: each method was timed over one full channel realization (all subarray pairs, all $8$ subcarriers, $512$ measurements per subarray pair), for one realization at each of $11$ SNR points from $-20$ to $30$ dB, and the results were averaged and entered into `Runtime.m`. The timer lines were inside an older version of `get_proposed_HSPM_estimation.m` that was later overwritten, so that exact timing code is no longer available. Hardware: the DCS model was trained on an Intel Core i9 with an NVIDIA RTX 5070 (12 GB); all MATLAB simulations, DCS inference and both runtime measurements ran on a laptop with an AMD Ryzen 7 7735HS CPU, 16 GB RAM and an NVIDIA RTX 3050 Laptop GPU (6 GB). The MATLAB baselines run on the CPU; the DCS scripts use the GPU when available. The other runtime figures previously in this README ($2.10$, $7.50$, $1.15$, $4.20$ ms and "$20.8\times$ faster") were not measured and have been removed. `python_dcs/evaluation/eval_runtime.py` previously contained placeholder numbers; it now prints the actual values.
+
+**5. Complexity (Table 4.3, Figure 4.7(a)).**
+Figure 4.7(a) shows $5.01\times$ and $5.07\times$ for OMP-DR and SOMP-DR, while Table 4.3 gives $4.98\times$ and $4.80\times$; they use average sub-dictionary sizes from different runs. The measured reduction is small (between about $1\%$ and $6\%$ of the $8192$ atoms, depending on the run), which is why DR barely changes the runtime. The DCS count ($T N_s N_p N_t N_r$) includes only the measurement-operator products and leaves out the generator's forward and backward passes, so it underestimates the DCS cost. The baseline counts also use $N_p = 512$ measurements per subarray pair, while the DCS count uses $N_p = 100$. Finally, OMP is about $8.4\times$ slower than SOMP despite nearly equal FLOP counts because it solves each of the $K = 8$ subcarriers separately.
+
+**6. Deep CS error floor (p. 55).**
+The report says Deep CS does not suffer the early saturation of the baselines. In Figure 4.2 it levels off at about $-14$ to $-14.5$ dB from $-5$ dB SNR onward, so it also has an error floor, set by the learned prior rather than by a grid.
+
+**7. BER script in this repository.**
+`python_dcs/evaluation/eval_fig4_5_ber_vs_snr.py` is a later exploratory version (QPSK, $N_s = 2$, stage-3 fine-tuned checkpoint, $10$ restarts, $100$ to $600$ gradient steps). It does not match the 16-QAM setting in Section 4.4.4 or the $20$-step setting used for the runtime and complexity results. The Deep CS curves in Figure 4.5 were produced by `thesis_figure_scripts/python/NMSEandBER.py` (16-QAM, e300 MAML checkpoint, $20$ Adam steps, $1$ restart, $100$ test channels); the saved version is the two-stream one, and the one-stream version was not kept. The baseline curves were produced by `thesis_figure_scripts/matlab/Untitled4.m` (one stream, $100$ realizations) and `NS2.m` (two streams; saved with $10$ realizations). Several other scripts that produced thesis figures were also missing from this repository; all of them are now in `thesis_figure_scripts/`, unchanged, with an index.
+
+**8. Naming.**
+"Cal" / "Calibrated" in file and variable names means the BER is computed with an MMSE equalizer built from a pilot-based estimate of the effective (beamformed) channel. It does not mean the data was adjusted.
+
+**9. BER equalizer settings.**
+In `Untitled4.m` and `NS2.m` the baselines' MMSE equalizer uses twice the noise variance (`lambda_fac = 2`), while perfect CSI uses the normal value, and `NMSEandBER.py` uses the normal value for Deep CS. In `Untitled4.m` the baselines estimate their effective channel from 8 noisy pilots, while `NMSEandBER.py` uses the exact effective channel.
+
+**10. Channel data.**
+The MATLAB baseline scripts generate their own channel realizations with `TeraMIMO_Channel/ChannelGeneration/channel_TIV.m` (the saved `generate_channel_param_TIV.m` is set to `channelType = 'LoS'`). Deep CS was trained and tested on a pre-generated TeraMIMO dataset with multipath and line-of-sight components; `data/mat2pt.py` points to a file generated at $1.2$ m, while the BER scripts use $1$ m. The two methods therefore share the simulator family and the main system parameters, but not the same channel realizations or channel model.
