@@ -184,7 +184,7 @@ THz-NearField-UM-MIMO-Channel-Estimation/
 │   ├── NMSEvsSNR.m                      # Evaluates Figure 4.2 (NMSE vs Transmit SNR)
 │   ├── EARvsNumberofMeasurements.m      # Evaluates Figure 4.3 (Effective Achievable Rate)
 │   ├── NMSEvsRho.m                      # Evaluates Figure 4.4 (NMSE vs Compression Ratio)
-│   ├── BERvsSNR_Cal.m                   # BER vs SNR of the baselines, 16-QAM ("Cal" = pilot-based effective-channel equalizer)
+│   ├── BERvsSNR_Cal.m                   # Earlier BER version (Figure 4.5 was made by thesis_figure_scripts/matlab/Untitled4.m and NS2.m)
 │   ├── BERvsSNR_QPSK.m                  # Monte Carlo QPSK transmission simulation (not used in the thesis figures)
 │   ├── NMSE_EAR_Vs_Distance.m           # Evaluates Figure 4.6 (NMSE and AR vs distance, baselines, fixed 10 dB SNR)
 │   ├── run_nmse_vs_distance_nearfield.m # Generates per-distance channel datasets (DCS distance study, not in the thesis)
@@ -192,11 +192,13 @@ THz-NearField-UM-MIMO-Channel-Estimation/
 │   ├── Runtime.m                        # Plots Figure 4.7(b) from the measured runtimes (values entered by hand)
 │   └── genreate_thz_channel_universal.m # Synthetic channel realization generator
 │
-├── plotting/                            # Publication Figure Plotting Scripts (Bachelor's Thesis Overlay)
-│   ├── plot_NMSE_Results.m              # Generates Figure 4.2 (NMSE vs SNR)
-│   ├── plot_EAR_Results.m               # Generates Figure 4.3 (EAR vs Measurements)
-│   ├── plot_NMSE_vs_Rho.m               # Generates Figure 4.4 (NMSE vs Spatial Compression Ratio)
-│   └── plot_Distance_Sweep_Results.m    # Generates Figure 4.6 (NMSE vs Distance)
+├── plotting/                            # Earlier plot versions (final thesis plots: thesis_figure_scripts/matlab/plotting)
+│   ├── plot_NMSE_Results.m              # Figure 4.2 (earlier style)
+│   ├── plot_EAR_Results.m               # Figure 4.3 (earlier style)
+│   ├── plot_NMSE_vs_Rho.m               # Figure 4.4
+│   └── plot_Distance_Sweep_Results.m    # Figure 4.6
+│
+├── thesis_figure_scripts/               # Unchanged originals of the scripts that produced every thesis figure, with an index
 │
 ├── results/                             # Centralized Simulation Workspaces & Results
 │   ├── data/                            # Raw simulation MAT-files (.mat)
@@ -434,7 +436,7 @@ python -m python_dcs.evaluation.eval_fig4_4_nmse_vs_rho
 ```
 
 #### 4. Figure 4.5: Bit Error Rate (BER) vs. SNR & Spatial Multiplexing Limits
-DCS BER evaluation. **Note:** the version of this script in the repository is a later exploratory variant (QPSK, $N_s = 2$, stage-3 fine-tuned checkpoint, 10 restarts, 100 to 600 gradient steps). It does not match the 16-QAM setting described in Section 4.4.4 of the report. See [Section 8](#8-corrections-to-the-thesis-report).
+DCS BER evaluation. **Note:** this script is a later exploratory variant (QPSK, $N_s = 2$, stage-3 fine-tuned checkpoint, 10 restarts, 100 to 600 gradient steps). The Deep CS curves in thesis Figure 4.5 were produced by `thesis_figure_scripts/python/NMSEandBER.py` (16-QAM, e300 checkpoint, 20 steps, 1 restart). See [Section 8](#8-corrections-to-the-thesis-report).
 ```bash
 python -m python_dcs.evaluation.eval_fig4_5_ber_vs_snr
 ```
@@ -516,7 +518,8 @@ run('simulations/EARvsNumberofMeasurements.m');
 % 3. Figure 4.4: NMSE vs Spatial Compression Ratio rho (Np / Nt)
 run('simulations/NMSEvsRho.m');
 
-% 4. Figure 4.5: BER vs SNR of the baselines (16-QAM, pilot-based effective-channel equalizer)
+% 4. Earlier BER simulation (thesis Figure 4.5 was made by
+%    thesis_figure_scripts/matlab/Untitled4.m and NS2.m)
 run('simulations/BERvsSNR_Cal.m');
 
 % 5. QPSK variant of the BER simulation (not used in the thesis figures)
@@ -693,7 +696,7 @@ The report says NMSE worsens with distance because the received SNR drops. In `N
 The report says OMP/SOMP overlap with their DR versions and that DR gives exactly the same accuracy. In Figure 4.6(b) the overlapping pairs are OMP with SOMP, and OMP-DR with SOMP-DR. In Figure 4.6(a) the DR versions are $1$ to $2.5$ dB better. DR therefore does change the accuracy in this setup.
 
 **4. Runtime units and procedure (Figure 4.7(b)).**
-This README previously stated $0.36$ ms on GPU. The measured value is **$0.364$ s per estimate**: the mean of the per-sample runtimes at $9$ SNR points ($0.354$ to $0.412$ s; the first point includes warm-up). `eval_fig4_7_runtime.py` processes a batch of $100$ test channels with $20$ Adam steps and $1$ restart, measures wall-clock time with `time.perf_counter()` (including the measurement-batch construction), and divides by $100$. Hardware: **[TO FILL: CPU / GPU model, and whether DCS ran on the GPU]**. The baseline runtimes were measured in MATLAB **[TO FILL: timing method]** and entered into `Runtime.m`. The other runtime figures previously in this README ($2.10$, $7.50$, $1.15$, $4.20$ ms and "$20.8\times$ faster") were not measured and have been removed. `python_dcs/evaluation/eval_runtime.py` previously contained placeholder numbers; it now prints the actual values.
+This README previously stated $0.36$ ms on GPU. The measured value is **$0.364$ s per estimate**: the mean of the per-sample runtimes at $9$ SNR points ($0.354$ to $0.412$ s; the first point includes warm-up). `eval_fig4_7_runtime.py` processes a batch of $100$ test channels with $20$ Adam steps and $1$ restart, measures wall-clock time with `time.perf_counter()` (including the measurement-batch construction), and divides by $100$. The baseline runtimes were measured in MATLAB by `thesis_figure_scripts/matlab/Untitled3.m`: each method was timed over one full channel realization (all subarray pairs, all $8$ subcarriers, $512$ measurements per subarray pair), for one realization at each of $11$ SNR points from $-20$ to $30$ dB, and the results were averaged and entered into `Runtime.m`. The timer lines were inside an older version of `get_proposed_HSPM_estimation.m` that was later overwritten, so that exact timing code is no longer available. Hardware: the DCS model was trained on an Intel Core i9 with an NVIDIA RTX 5070 (12 GB); all MATLAB simulations, DCS inference and both runtime measurements ran on a second computer with an NVIDIA RTX 3050 (6 GB) and **[TO FILL: CPU model]**. The MATLAB baselines run on the CPU; the DCS scripts use the GPU when available. The other runtime figures previously in this README ($2.10$, $7.50$, $1.15$, $4.20$ ms and "$20.8\times$ faster") were not measured and have been removed. `python_dcs/evaluation/eval_runtime.py` previously contained placeholder numbers; it now prints the actual values.
 
 **5. Complexity (Table 4.3, Figure 4.7(a)).**
 Figure 4.7(a) shows $5.01\times$ and $5.07\times$ for OMP-DR and SOMP-DR, while Table 4.3 gives $4.98\times$ and $4.80\times$; they use average sub-dictionary sizes from different runs. The measured reduction is small (between about $1\%$ and $6\%$ of the $8192$ atoms, depending on the run), which is why DR barely changes the runtime. The DCS count ($T N_s N_p N_t N_r$) includes only the measurement-operator products and leaves out the generator's forward and backward passes, so it underestimates the DCS cost. The baseline counts also use $N_p = 512$ measurements per subarray pair, while the DCS count uses $N_p = 100$. Finally, OMP is about $8.4\times$ slower than SOMP despite nearly equal FLOP counts because it solves each of the $K = 8$ subcarriers separately.
@@ -702,7 +705,13 @@ Figure 4.7(a) shows $5.01\times$ and $5.07\times$ for OMP-DR and SOMP-DR, while 
 The report says Deep CS does not suffer the early saturation of the baselines. In Figure 4.2 it levels off at about $-14$ to $-14.5$ dB from $-5$ dB SNR onward, so it also has an error floor, set by the learned prior rather than by a grid.
 
 **7. BER script in this repository.**
-`python_dcs/evaluation/eval_fig4_5_ber_vs_snr.py` is a later exploratory version (QPSK, $N_s = 2$, stage-3 fine-tuned checkpoint, $10$ restarts, $100$ to $600$ gradient steps). It does not match the 16-QAM setting in Section 4.4.4 or the $20$-step setting used for the runtime and complexity results. **[TO FILL: which configuration produced the Deep CS curves in Figure 4.5.]**
+`python_dcs/evaluation/eval_fig4_5_ber_vs_snr.py` is a later exploratory version (QPSK, $N_s = 2$, stage-3 fine-tuned checkpoint, $10$ restarts, $100$ to $600$ gradient steps). It does not match the 16-QAM setting in Section 4.4.4 or the $20$-step setting used for the runtime and complexity results. The Deep CS curves in Figure 4.5 were produced by `thesis_figure_scripts/python/NMSEandBER.py` (16-QAM, e300 MAML checkpoint, $20$ Adam steps, $1$ restart, $100$ test channels); the saved version is the two-stream one, and the one-stream version was not kept. The baseline curves were produced by `thesis_figure_scripts/matlab/Untitled4.m` (one stream, $100$ realizations) and `NS2.m` (two streams; saved with $10$ realizations). Several other scripts that produced thesis figures were also missing from this repository; all of them are now in `thesis_figure_scripts/`, unchanged, with an index.
 
 **8. Naming.**
 "Cal" / "Calibrated" in file and variable names means the BER is computed with an MMSE equalizer built from a pilot-based estimate of the effective (beamformed) channel. It does not mean the data was adjusted.
+
+**9. BER equalizers are not identical across methods.**
+In `Untitled4.m` and `NS2.m` the baselines' MMSE equalizer uses twice the noise variance (`lambda_fac = 2`), while perfect CSI uses the normal value, and `NMSEandBER.py` uses the normal value for Deep CS. In `Untitled4.m` the baselines also estimate their effective channel from 8 noisy pilots, while `NMSEandBER.py` uses the exact effective channel. This favors Deep CS in Figure 4.5; both BER figures should be re-run with the same equalizer and channel knowledge for every method.
+
+**10. Channel data.**
+The MATLAB baseline scripts generate their own channel realizations with `TeraMIMO_Channel/ChannelGeneration/channel_TIV.m` (the saved `generate_channel_param_TIV.m` is set to `channelType = 'LoS'`). Deep CS was trained and tested on a pre-generated TeraMIMO dataset with multipath and line-of-sight components; `data/mat2pt.py` points to a file generated at $1.2$ m, while the BER scripts use $1$ m. The two methods therefore share the simulator family and the main system parameters, but not the same channel realizations or channel model.
