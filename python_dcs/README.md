@@ -1,6 +1,6 @@
 # Deep Compressed Sensing (DCS) for THz UM-MIMO Near-Field Channel Estimation
 
-This directory contains the authentic PyTorch deep learning implementation of the Deep Compressed Sensing (DCS) architecture for wideband near-field THz UM-MIMO channel estimation:
+This directory contains the PyTorch implementation of the Deep Compressed Sensing (DCS) estimator used in the thesis (based on the code of Lin, Erdem and Alouini, 2025). The unchanged scripts that produced the Deep CS results in the report are in [`../thesis_figure_scripts/python/`](../thesis_figure_scripts/README.md).
 > **Thesis Reference**: Chapter 3 (Sections 3.6–3.8, Algorithms 1 & 2) and Chapter 4 (Sections 4.3–4.4).
 
 ---
@@ -10,9 +10,10 @@ This directory contains the authentic PyTorch deep learning implementation of th
 ### Option A: Using Conda (Recommended)
 Create the official conda environment using `environment.yml`:
 ```bash
-# Automated creation:
+# Automated creation (creates the environment in ./env):
 chmod +x create-conda-env.sh
 ./create-conda-env.sh
+conda activate ./env
 
 # Or manual creation:
 conda env create -f environment.yml
@@ -40,21 +41,23 @@ python_dcs/
 │
 ├── training/
 │   ├── dcs_train.py                 # Algorithm 1: Offline MAML meta-training loop (300 epochs)
-│   ├── dcs_finetune.py              # Latent space fine-tuning for soft BER
+│   ├── dcs_finetune.py              # Later fine-tuning experiment (not used in the report)
 │   └── mat2pt.py                    # Converts MATLAB .mat channel arrays into PyTorch .pt tensors
 │
-├── evaluation/                      # Thesis Chapter 4 Figure Reproduction Scripts
-│   ├── eval_fig4_2_nmse_vs_snr.py   # Figure 4.2: NMSE vs Transmit SNR (-20 dB to 20 dB)
-│   ├── eval_fig4_3_ear_vs_meas.py   # Figure 4.3: EAR vs Pilot Measurements (Inf & 512 coherence)
-│   ├── eval_fig4_4_nmse_vs_rho.py   # Figure 4.4: NMSE vs Compression Ratio (rho = Np/Nt)
-│   ├── eval_fig4_5_ber_vs_snr.py    # Figure 4.5: Calibrated QPSK Bit Error Rate (BER) vs SNR
-│   ├── eval_fig4_6_distance_sweep.py# Figure 4.6: Near-field Distance Sweep (0.4m to 1.6m)
-│   └── eval_fig4_7_runtime.py       # Figure 4.7: Online inference execution time profiling
+├── evaluation/                      # Evaluation scripts (see the main README, Section 4, for which ones match the report)
+│   ├── eval_fig4_2_nmse_vs_snr.py   # Later NMSE vs SNR version (fine-tuned checkpoint)
+│   ├── eval_fig4_3_ear_vs_meas.py   # Earlier EAR version (e130 checkpoints)
+│   ├── eval_fig4_4_nmse_vs_rho.py   # Earlier NMSE vs compression ratio version (e130 checkpoint)
+│   ├── eval_fig4_5_ber_vs_snr.py    # Later exploratory BER version (QPSK); Figure 4.5 used 16-QAM
+│   ├── eval_fig4_6_distance_sweep.py# Exploratory Deep CS distance sweep (not in Figure 4.6)
+│   ├── eval_fig4_7_runtime.py       # Deep CS NMSE of Figure 4.2 and runtime of Figure 4.7(b)
+│   ├── plot_dcsEAR.py               # Deep CS EAR of Figure 4.3
+│   └── eval_runtime.py              # Prints Table 4.3 FLOPs and the measured runtimes
 │
-├── checkpoints/                     # Model weights directory (gitignored for large files)
-│   └── README.md                    # Instructions on placing .pth / .pth.tar weights
+├── checkpoints/
+│   └── README.md                    # Notes on the trained checkpoints (not included)
 │
-└── data/                            # Calibrated evaluation CSVs & sample datasets
+└── data/                            # Result CSV files (some from earlier runs)
     ├── Classical_Baselines_Calibrated.csv
     ├── DCS_BER_vs_SNR.csv
     ├── DCS_EAR_vs_Measurements_SNR24_dl100.csv
@@ -71,29 +74,21 @@ python_dcs/
 * **Channel-wise Normalization**: Evaluated across dataset realizations per Equations (4.12)–(4.14).
 * **Latent Space**: $z \in \mathbb{R}^{100}$ standard normal prior.
 * **Online Inference**: Adam optimizer, $\text{lr} = 0.1$, $\beta = (0.9, 0.99)$, unit sphere projection.
-* **Offline MAML Training**: Adam optimizer, $\text{lr} = 0.0002$, $\beta = (0.9, 0.99)$, batch size 50/100, 300 epochs with auxiliary RIP distance-preservation loss.
+* **Offline MAML Training**: Adam optimizer, $\text{lr} = 0.0002$, $\beta = (0.9, 0.99)$, batch size 50 (the script default is 100), 300 epochs, 10 inner steps, with an auxiliary RIP distance-preservation loss. The training measurements are noise-free.
 
 ---
 
 ## 4. Running Thesis Evaluations
 
-From the repository root:
+Run the scripts from this folder (`python_dcs/`), because they read `./data/` and `./ckpt/` relative to the current folder. The checkpoint used in the report is `ckpt/dcs_r32t256k8/e300b50gd10np100dl100.pth.tar`.
 ```bash
-# Figure 4.2 (NMSE vs. SNR):
-python -m python_dcs.evaluation.eval_fig4_2_nmse_vs_snr
+# Deep CS NMSE of Figure 4.2 and runtime of Figure 4.7(b):
+python evaluation/eval_fig4_7_runtime.py
 
-# Figure 4.3 (EAR vs. Measurements):
-python -m python_dcs.evaluation.eval_fig4_3_ear_vs_meas
+# Deep CS EAR of Figure 4.3:
+python evaluation/plot_dcsEAR.py
 
-# Figure 4.4 (NMSE vs. Compression Ratio):
-python -m python_dcs.evaluation.eval_fig4_4_nmse_vs_rho
-
-# Figure 4.5 (QPSK System BER vs. SNR):
-python -m python_dcs.evaluation.eval_fig4_5_ber_vs_snr
-
-# Figure 4.6 (Distance Sweep):
-python -m python_dcs.evaluation.eval_fig4_6_distance_sweep
-
-# Figure 4.7 (Runtime Profiling):
-python -m python_dcs.evaluation.eval_fig4_7_runtime
+# Table 4.3 FLOPs and measured runtimes:
+python evaluation/eval_runtime.py
 ```
+For Figures 4.4 and 4.5, use `../thesis_figure_scripts/python/nmseVSrho gemini.py` and `../thesis_figure_scripts/python/NMSEandBER.py` (copy them into this folder first, since they import `model` and `utils`).
