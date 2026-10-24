@@ -9,8 +9,8 @@ The MATLAB scripts expect the original folder layout (`Algorithms/`, `TeraMIMO_C
 | Fig. 4.2 NMSE vs SNR | `matlab/NMSEvsSNR.m` | `python/Runtime.py` (20 Adam steps, 100 test channels) | `matlab/plotting/nmseplot_new.m` |
 | Fig. 4.3 EAR vs measurements | `matlab/EARvsNumberofMeasurements.m` | `python/plot_dcsEAR.py` (SNR 24.8 dB, 50 steps) | `matlab/plotting/EARplot_new.m` |
 | Fig. 4.4 NMSE vs compression ratio | `matlab/NMSEvsRho.m` | `python/nmseVSrho gemini.py` (SNR 10 dB, 50 steps, 3 restarts) | `matlab/plotting/plot_NMSE_vs_Rho.m` |
-| Fig. 4.5(a) BER, 1 stream | `matlab/Untitled4.m` (16-QAM, 100 realizations) | earlier 1-stream version of `python/NMSEandBER.py` (not kept) | `matlab/plotting/plotBER.m` |
-| Fig. 4.5(b) BER, 2 streams | `matlab/NS2.m` (16-QAM; saved with 10 realizations) | `python/NMSEandBER.py` (16-QAM, e300 checkpoint, 20 steps, 1 restart) | `matlab/plotting/plotBERns2.m` |
+| Fig. 4.5(a) BER, 1 stream | `matlab/Untitled4.m` (16-QAM, 100 realizations) | `python/NMSEandBER.py` with `n_streams = 1` (16-QAM, e300, 20 steps) | `matlab/plotting/plotBER.m` |
+| Fig. 4.5(b) BER, 2 streams | `matlab/NS2.m` (16-QAM; saved with 10 realizations) | `python/NMSEandBER.py` with `n_streams = 2` (16-QAM, e300 checkpoint, 20 steps, 1 restart) | `matlab/plotting/plotBERns2.m` |
 | Fig. 4.6 NMSE and rate vs distance | `matlab/NMSE_EAR_Vs_Distance.m` (fixed 10 dB SNR) | not in this figure | `matlab/plotting/plotNMSE_EAR_dist.m` |
 | Table 4.3, Fig. 4.7(a), Fig. 4.8 | `matlab/Untitled3.m` (reduced-dictionary sizes), then `matlab/Complexity.m` | formula only | `matlab/plotting/plot_BarCharts.m` |
 | Fig. 4.7(b) runtime | `matlab/Untitled3.m` | `python/Runtime.py` | `matlab/plotting/Runtime.m` |
